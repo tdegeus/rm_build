@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""rm_build
+  Remove common build files and folders. This function always prompts before removal.
+
+Usage:
+  rm_build [options] [--path=<str>]...
+
+Options:
+  -p, --path=<str>      Paths to consider [default: .].
+  -e, --exclude=<str>   Exclude paths/folders.
+  -f, --force           Remove without prompting for confirmation.
+  -h, --help            Show help.
+      --version         Show version.
+
+
+Copyright:
+  T.W.J. de Geus
+  tom@geus.me
+  www.geus.me
+"""
+
+# ==================================================================================================
+
+import sys
+import os
+import re
+import shutil
+import docopt
+import click
+
+# ==================================================================================================
+
+args = docopt.docopt(__doc__,version='0.1.0')
+
+# ==================================================================================================
+
+# list with files to remove
+rm = []
+
+# collect files
+for path in args['--path']:
+
+  # - get all files in the folder
+  files = os.listdir(path)
+
+  # - loop over all files, check to remove
+  for file in files:
+
+    if re.match(r'(.*)(\.egg\-info)'  ,file): rm += [os.path.relpath(os.path.join(path,file))]
+    if re.match(r'(build)'            ,file): rm += [os.path.relpath(os.path.join(path,file))]
+    if re.match(r'(var)'              ,file): rm += [os.path.relpath(os.path.join(path,file))]
+    if re.match(r'(dist)'             ,file): rm += [os.path.relpath(os.path.join(path,file))]
+    if re.match(r'CMakeCache.txt'     ,file): rm += [os.path.relpath(os.path.join(path,file))]
+    if re.match(r'CMakeFiles'         ,file): rm += [os.path.relpath(os.path.join(path,file))]
+    if re.match(r'Makefile'           ,file): rm += [os.path.relpath(os.path.join(path,file))]
+    if re.match(r'cmake_install.cmake',file): rm += [os.path.relpath(os.path.join(path,file))]
+
+if len(rm) == 0:
+  sys.exit(0)
+
+# --------------------------------------------------------------------------------------------------
+
+# set print format
+w   = max([len(file) for file in rm])
+fmt = 'rm {name:'+str(w)+'s}'
+
+# print files that will be removed
+for name in rm:
+  print(fmt.format(name=name))
+
+# ask user for confirmation
+if not args['--force']:
+  if not click.confirm('Proceed?'):
+    sys.exit(1)
+
+# if user accepted -> proceed with removal
+for name in rm:
+  try:
+    shutil.rmtree(name)
+  except NotADirectoryError:
+    try:
+      os.unlink(name)
+    except FileNotFoundError:
+      pass
